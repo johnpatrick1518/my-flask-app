@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on: [push]
 
@@ -19,3 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: docker build -t my-flask-app .
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker
+
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd my-flask-app || git clone https://github.com/johnpatrick1518/my-flask-app.git
+            cd my-flask-app
+            git pull
+            docker build -t my-flask-app .
+            docker stop flask-app || true
+            docker rm flask-app || true
+            docker run -d -p 80:5000 --name flask-app my-flask-app
